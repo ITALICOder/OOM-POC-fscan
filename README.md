@@ -11,8 +11,6 @@
 ## TL;DR
 
 1. **Remote denial of service (process crash)** — `lib/pq`'s `recvMessage` reads a 4-byte message length from the socket with **no upper bound** and allocates that many bytes. Any target (or on-path device) that answers a PostgreSQL startup packet with a non-PostgreSQL response — most commonly an HTTP error page — makes fscan allocate gigabytes and die with `fatal error: out of memory` (exit code 2). A **5-byte response** is enough to demand **2.15 GB** (32-bit build) or **4.29 GB** (64-bit build) *per connection*; fscan's concurrent credential workers multiply this (25 concurrent connections ⇒ **>100 GB** demanded).
-2. **`-socks5` is not applied to `database/sql` plugins** — with `-socks5` set, port scanning and banner grabbing go through the proxy, but the `postgresql` plugin (and presumably `mysql`, `mssql`, `oracle` — same `database/sql` pattern) connects **directly** from the scanner's real IP. This leaks the real source IP, reaches targets outside the configured proxy, and is what allowed issue #1 to be triggered by a LAN host *during an otherwise fully proxied scan*.
-
 ---
 
 ## Issue 1 — Remote OOM crash via attacker-controlled allocation in `lib/pq`
